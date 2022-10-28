@@ -1,12 +1,10 @@
 import java.util.*;
 import java.io.*;
-
-import com.opencsv.*;
-
-import org.json.simple.*;
-import org.json.simple.parser.*;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 public class App {
+    
 
     //tmdb_5000_credits.csv have 4 columns: movie_id, title, cast, crew
     //but we only need title and cast columns
@@ -14,103 +12,103 @@ public class App {
     public static class Movie {
         private String title;
         private String cast;
-
+    
         public String getTitle() {
             return title;
         }
-
+    
         public void setTitle(String title) {
             this.title = title;
         }
-
+    
         public String getCast() {
             return cast;
         }
-
+    
         public void setCast(String cast) {
             this.cast = cast;
         }
     }
 
-    //this method will read the csv file and return a list of Movie objects
-    public static List<Movie> readCSV(String filename) throws Exception {
-        List<Movie> movies = new ArrayList<Movie>();
+    //read only the title column from the csv file
+    //some titles have commas and double quotes
+    //so we need to use regex to get the title
+    public static String getTitle(String line) {
+        String title = "";
+        Pattern pattern = Pattern.compile("\"(.*?)\"");
+        Matcher matcher = pattern.matcher(line);
+        if (matcher.find()) {
+            title = matcher.group(1);
+        }
+        return title;
+    }
+    
+    //print the titles
+    public static void printTitles(List<String> titles) {
+        for (String title : titles) {
+            System.out.println(title);
+        }
+    }
 
-        CSVReader reader = new CSVReader(new FileReader(filename));
-        String[] nextLine;
-        while ((nextLine = reader.readNext()) != null) {
+    //read only the cast column from the csv file
+    //find the character token and the actor name
+    //store only the actor name in the cast list
+    public static List<String> readCast(String fileName) {
+        List<String> casts = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(fileName))){
+            String line = br.readLine();
+            while ((line = br.readLine()) != null) {
+                String[] tokens = line.split(",");
+                for (int i = 0; i < tokens.length; i++) {
+                    if (tokens[i].equals("\"character\"")) {
+                        casts.add(tokens[i + 1]);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return casts;
+    }
+
+    //create a movie object and store the title and cast list
+    //then store the movie object in a movie list
+    public static List<Movie> createMovieList(List<String> titles, List<String> casts) {
+        List<Movie> movies = new ArrayList<>();
+        for (int i = 0; i < casts.size(); i++) {
             Movie movie = new Movie();
-            movie.setTitle(nextLine[1]);
-            movie.setCast(nextLine[2]);
+            movie.setTitle(titles.get(i));
+            movie.setCast(casts.get(i));
             movies.add(movie);
         }
-
         return movies;
     }
 
-    //the cast column is a json string
-    //so we need to parse the json string and get the cast name
-    public static String getCastName(String cast) throws Exception {
-        JSONParser parser = new JSONParser();
-        JSONArray castArray = (JSONArray) parser.parse(cast);
-
-        String castName = "";
-        for (int i = 0; i < castArray.size(); i++) {
-            JSONObject castObject = (JSONObject) castArray.get(i);
-            castName += castObject.get("name") + ", ";
-        }
-
-        return castName;
-    }
-
-    //print the movie titles from the user input cast name
-    public static void printMovieTitles(String castName, List<Movie> movies) {
+    //print the list of movies and cast
+    public static void printMovies(List<Movie> movies) {
         for (Movie movie : movies) {
-            if (movie.getCast().contains(castName)) {
+            System.out.println(movie.getTitle() + " " + movie.getCast());
+        }
+    }
+    //print the title of the movies from the cast input
+    public static void printMovies(List<Movie> movies, String cast) {
+        for (Movie movie : movies) {
+            if (movie.getCast().contains(cast)) {
                 System.out.println(movie.getTitle());
             }
         }
     }
 
-    //predict the cast name if the user input is not correct
-    public static String predictCastName(String castName, List<Movie> movies) {
-        String[] castNameArray = castName.split(" ");
-        String predictedCastName = "";
-
-        for (String name : castNameArray) {
-            for (Movie movie : movies) {
-                if (movie.getCast().contains(name)) {
-                    predictedCastName += name + " ";
-                    break;
-                }
-            }
-        }
-
-        return predictedCastName;
-    }
-
     public static void main(String[] args) throws Exception {
-        List<Movie> movies = readCSV("data/tmdb_5000_credits.csv");
+        List<String> films = readTitle("data/tmdb_5000_credits.csv");
+        printTitles(films);
+        /*
+        List<String> casts = readCast("data/tmdb_5000_credits.csv");
+        List<Movie> movies = createMovieList(films, casts);
+        printMovies(movies);
+        */
 
-        System.out.println("Welcome to the Movie Wall!");
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Enter the name of an actor (or EXIT to quit): ");
-        String castName = scanner.nextLine();
-
-        if (castName.isEmpty() || castName.equals("EXIT")) {
-            System.out.println("Thank you for using the Movie Wall!");
-        } else {
-            if (castName.contains(" ")) {
-                castName = predictCastName(castName, movies);
-            }
-
-            if (castName.isEmpty()) {
-                System.out.println("No movie found");
-            } else {
-                printMovieTitles(castName, movies);
-            }
-        }
-
-        scanner.close();
     }
+            
 }
+
