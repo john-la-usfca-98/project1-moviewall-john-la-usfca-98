@@ -1,114 +1,193 @@
 import java.util.*;
 import java.io.*;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
 
 public class App {
-    
 
-    //tmdb_5000_credits.csv have 4 columns: movie_id, title, cast, crew
-    //but we only need title and cast columns
-    //so we create a class to store the data
-    public static class Movie {
-        private String title;
-        private String cast;
     
-        public String getTitle() {
-            return title;
+    //read the csv file
+    public static BufferedReader readCSV(String fileName) {
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(new FileReader(fileName));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
         }
-    
-        public void setTitle(String title) {
-            this.title = title;
-        }
-    
-        public String getCast() {
-            return cast;
-        }
-    
-        public void setCast(String cast) {
-            this.cast = cast;
-        }
+        return br;
     }
 
-    //read only the title column from the csv file
-    //some titles have commas and double quotes
-    //so we need to use regex to get the title
-    public static String getTitle(String line) {
-        String title = "";
-        Pattern pattern = Pattern.compile("\"(.*?)\"");
-        Matcher matcher = pattern.matcher(line);
-        if (matcher.find()) {
-            title = matcher.group(1);
-        }
-        return title;
-    }
-    
-    //print the titles
-    public static void printTitles(List<String> titles) {
-        for (String title : titles) {
-            System.out.println(title);
-        }
-    }
-
-    //read only the cast column from the csv file
-    //find the character token and the actor name
-    //store only the actor name in the cast list
-    public static List<String> readCast(String fileName) {
-        List<String> casts = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(new FileReader(fileName))){
-            String line = br.readLine();
+    //parse the csv file
+    //create a 2d array to store the data
+    public static String[][] parseCSV(BufferedReader br) {
+        String[] data = new String[1000000];
+        int i = 0;
+        
+        //read the csv file line by line
+        String line = "";
+        try {
             while ((line = br.readLine()) != null) {
-                String[] tokens = line.split(",");
-                for (int i = 0; i < tokens.length; i++) {
-                    if (tokens[i].equals("\"character\"")) {
-                        casts.add(tokens[i + 1]);
-                    }
-                }
+                data[i] = line;
+                i++;
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return casts;
+        
+        //create a 2d array to store the data
+        String finalArray[][] = new String[10000][10000];
+
+        //split the data by comma
+        for (int j = 1; j < data.length; j++) {
+            String temp = data[j];
+            if (temp == null) {
+                break;
+            }
+
+            String[] Name = temp.split("name\"\": \"\"");
+            String[] Movie = temp.split(",");
+            String[] Role = temp.split(", \"\"character\"\": \"\"");
+            
+            //store the data in the 2d array
+            //the row is the movie
+            //the column is cast name and role
+            for (int r = 1; r < 2; r++){
+                if (Movie[r].contains("\"")){
+                    finalArray[j-1][0] = Movie[r].substring(Movie[r].indexOf("\"") + 1);
+                }
+                else {
+                    finalArray[j-1][0] = Movie[r];
+                }
+            }
+            for (int k = 0; k < Name.length && k < Role.length; k++) {
+                if(Name[k].contains("\"")){
+                    finalArray[j-1][k] = Name[k].substring(0, Name[k].indexOf("\"\"")) 
+                                        + " as " +
+                                        Role[k].substring(0, Role[k].indexOf("\""));
+                }
+            }
+        }
+
+        //special case where a movie contains double quotes and commas
+        finalArray[4800][0] = "Signed, Sealed, Delivered";
+
+        return finalArray;
     }
 
-    //create a movie object and store the title and cast list
-    //then store the movie object in a movie list
-    public static List<Movie> createMovieList(List<String> titles, List<String> casts) {
-        List<Movie> movies = new ArrayList<>();
-        for (int i = 0; i < casts.size(); i++) {
-            Movie movie = new Movie();
-            movie.setTitle(titles.get(i));
-            movie.setCast(casts.get(i));
-            movies.add(movie);
+    //print the 2d array
+    public static void printArray(String[][] array) {
+        for (int i = 0; i < array.length; i++) {
+            for (int j = 0; j < array[i].length; j++) {
+                if (array[i][j] != null) {
+                    System.out.print(array[i][j] + " ");
+                }
+            }
+            System.out.println();
         }
-        return movies;
     }
 
-    //print the list of movies and cast
-    public static void printMovies(List<Movie> movies) {
-        for (Movie movie : movies) {
-            System.out.println(movie.getTitle() + " " + movie.getCast());
-        }
-    }
-    //print the title of the movies from the cast input
-    public static void printMovies(List<Movie> movies, String cast) {
-        for (Movie movie : movies) {
-            if (movie.getCast().contains(cast)) {
-                System.out.println(movie.getTitle());
+    //print the movie name from input cast name
+    public static void printMovie(String[][] array, String name) {
+        for (int i = 0; i < array.length; i++) {
+            for (int j = 0; j < array[i].length; j++) {
+                if (array[i][j] != null && array[i][j].contains(name)) {
+                    System.out.println(array[i][0]);
+                }
             }
         }
     }
 
-    public static void main(String[] args) throws Exception {
-        List<String> films = readTitle("data/tmdb_5000_credits.csv");
-        printTitles(films);
-        /*
-        List<String> casts = readCast("data/tmdb_5000_credits.csv");
-        List<Movie> movies = createMovieList(films, casts);
-        printMovies(movies);
-        */
-
+    //predict the cast name from wrong input cast name
+    //use the Levenshtein distance algorithm
+    public static String predictCast(String[][] array, String name) {
+        int min = 1000000;
+        String cast = "";
+        for (int i = 0; i < array.length; i++) {
+            for (int j = 0; j < array[i].length; j++) {
+                if (array[i][j] != null) {
+                    int distance = levenshteinDistance(name, array[i][j]);
+                    if (distance < min) {
+                        min = distance;
+                        cast = array[i][j];
+                    }
+                }
+            }
+        }
+        return cast;
     }
-            
-}
 
+    //calculate the Levenshtein distance
+    public static int levenshteinDistance(String s1, String s2) {
+        int len1 = s1.length();
+        int len2 = s2.length();
+
+        int[][] dp = new int[len1 + 1][len2 + 1];
+
+        for (int i = 0; i <= len1; i++) {
+            dp[i][0] = i;
+        }
+
+        for (int j = 0; j <= len2; j++) {
+            dp[0][j] = j;
+        }
+
+        for (int i = 1; i <= len1; i++) {
+            for (int j = 1; j <= len2; j++) {
+                int first = dp[i - 1][j] + 1;
+                int second = dp[i][j - 1] + 1;
+                int third = dp[i - 1][j - 1];
+                if (s1.charAt(i - 1) != s2.charAt(j - 1)) {
+                    third = third + 1;
+                }
+                dp[i][j] = Math.min(first, Math.min(second, third));
+            }
+        }
+        return dp[len1][len2];
+    }
+
+    public static void main (String[] args){
+        Scanner sc = new Scanner(System.in);
+        System.out.println("Welcome to the Movie Wall!");
+        BufferedReader br = readCSV("data/tmdb_5000_credits.csv");
+        String[][] movieWall = parseCSV(br);
+
+        while(true){
+            System.out.println("\nPlease enter a cast name (or enter exit to quit):");
+            String name = sc.nextLine();
+            if (name.equals("exit") || name.equals("quit")) {
+                System.out.println("Thank you for using the Movie Wall!");
+                sc.close();
+                break;
+            }
+            else if (name.equals("print")) {
+                printArray(movieWall);
+            }
+            else {
+                boolean flag = false;
+                for (int i = 0; i < movieWall.length; i++) {
+                    for (int j = 0; j < movieWall[i].length; j++) {
+                        if (movieWall[i][j] != null && movieWall[i][j].contains(name)) {
+                            flag = true;
+                            break;
+                        }
+                    }
+                }
+                if (flag) {
+                    System.out.println("\nThe movies that " + name + " has been in are:");
+                    printMovie(movieWall, name);
+                    continue;
+                }
+                else {
+                    System.out.println("\nSorry, we don't have " + name + " in our database.");
+                    System.out.println("\nDid you mean " + predictCast(movieWall, name) + "?");
+                    if(sc.nextLine().equals("yes") || sc.nextLine().equals("y")){
+                        System.out.println("\nThe movies that " + predictCast(movieWall, name) + " has been in are:");
+                        printMovie(movieWall, predictCast(movieWall, name));
+                        continue;
+                    }
+                    else {
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
