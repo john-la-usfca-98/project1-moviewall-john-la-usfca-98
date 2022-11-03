@@ -56,12 +56,13 @@ public class App {
                 else {
                     finalArray[j-1][0] = Movie[r];
                 }
-            }
-            for (int k = 0; k < Name.length && k < Role.length; k++) {
-                if(Name[k].contains("\"")){
-                    finalArray[j-1][k] = Name[k].substring(0, Name[k].indexOf("\"\"")) 
-                                        + " as " +
-                                        Role[k].substring(0, Role[k].indexOf("\""));
+            
+                for (int k = 0; k < Name.length && k < Role.length; k++) {
+                    if(Name[k].contains("\"")){
+                        finalArray[j-1][k] = Name[k].substring(0, Name[k].indexOf("\"\"")) 
+                                             + " as " +
+                                             Role[k].substring(0, Role[k].indexOf("\""));
+                    }
                 }
             }
         }
@@ -80,19 +81,51 @@ public class App {
                     System.out.print(array[i][j] + " ");
                 }
             }
-            System.out.println();
+        }
+    }
+
+    //print movie list
+    public static void printMovieList(String[][] array) {
+        for (int r = 0; array[r][0] != null; r++) {
+            System.out.print("Movie: ");
+            for (int c = 0; array[r][c] != null; c++) {
+                System.out.println(array[r][c]);
+            }
+        }
+    }
+
+    //print the movie name
+    public static void printMovies(List<String> movies) {
+        for (int i = 0; i < movies.size(); i++) {
+            System.out.println(movies.get(i));
         }
     }
 
     //print the movie name from input cast name
-    public static void printMovie(String[][] array, String name) {
-        for (int i = 0; i < array.length; i++) {
-            for (int j = 0; j < array[i].length; j++) {
-                if (array[i][j] != null && array[i][j].contains(name)) {
-                    System.out.println(array[i][0]);
-                }
+    public static boolean searchForMovie(String[][] array, String name) {
+        String actorName = "";
+        String roleName = "";
+        boolean found = false;
+        List<String> movies = new ArrayList<String>();
+
+        for (int r = 0; array[r][0] != null; r++) {
+            for (int c = 0; array[r][c] != null; c++) {
+                if (array[r][c].contains("as")) {
+                    actorName = array[r][c].substring(0, array[r][c].indexOf(" as "));
+                    roleName = array[r][c].substring(array[r][c].indexOf(" as ") - 1);
+                    if (actorName.equals(name)) {
+                        movies.add("Movie: " + array[r][0] + roleName);
+                        found = true;
+                    }
+                }               
             }
         }
+
+        if (found) {
+            printMovies(movies);
+        }
+
+        return found;
     }
 
     //predict the cast name from wrong input cast name
@@ -100,13 +133,14 @@ public class App {
     public static String predictCast(String[][] array, String name) {
         int min = 1000000;
         String cast = "";
-        for (int i = 0; i < array.length; i++) {
-            for (int j = 0; j < array[i].length; j++) {
-                if (array[i][j] != null) {
-                    int distance = levenshteinDistance(name, array[i][j]);
+        for (int r = 0; array[r][0] != null; r++) {
+            for (int c = 0; array[r][c] != null; c++) {
+                if (array[r][c].contains("as")) {
+                    String actorName = array[r][c].substring(0, array[r][c].indexOf(" as "));
+                    int distance = levenshteinDistance(name, actorName);
                     if (distance < min) {
                         min = distance;
-                        cast = array[i][j];
+                        cast = actorName;
                     }
                 }
             }
@@ -157,30 +191,25 @@ public class App {
                 sc.close();
                 break;
             }
-            else if (name.equals("print")) {
+            
+            //print raw data
+            else if (name.equals("print raw data")) {
                 printArray(movieWall);
             }
+
+            //print movie list
+            else if (name.equals("print")) {
+                printMovieList(movieWall);
+            }
+
             else {
-                boolean flag = false;
-                for (int i = 0; i < movieWall.length; i++) {
-                    for (int j = 0; j < movieWall[i].length; j++) {
-                        if (movieWall[i][j] != null && movieWall[i][j].contains(name)) {
-                            flag = true;
-                            break;
-                        }
-                    }
-                }
-                if (flag) {
-                    System.out.println("\nThe movies that " + name + " has been in are:");
-                    printMovie(movieWall, name);
-                    continue;
-                }
-                else {
+                boolean found = searchForMovie(movieWall, name);
+                if (!found){
                     System.out.println("\nSorry, we don't have " + name + " in our database.");
                     System.out.println("\nDid you mean " + predictCast(movieWall, name) + "?");
-                    if(sc.nextLine().equals("yes") || sc.nextLine().equals("y")){
+                    if (sc.nextLine().equals("yes") || sc.nextLine().equals("y")){
                         System.out.println("\nThe movies that " + predictCast(movieWall, name) + " has been in are:");
-                        printMovie(movieWall, predictCast(movieWall, name));
+                        searchForMovie(movieWall, predictCast(movieWall, name));
                         continue;
                     }
                     else {
@@ -191,3 +220,4 @@ public class App {
         }
     }
 }
+
