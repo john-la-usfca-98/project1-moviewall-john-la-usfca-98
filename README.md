@@ -8,8 +8,11 @@ You can look for this link to learn more about the Levenstein distance algorithm
 
 More links to learn about the algorithm: 
 https://www.baeldung.com/cs/levenshtein-distance-computation
+
 https://www.geeksforgeeks.org/edit-distance-dp-5/
+
 https://www.geeksforgeeks.org/levenshtein-distance-and-text-similarity/
+
 https://medium.com/@ethannam/understanding-the-levenshtein-distance-equation-for-beginners-c4285a5604f0
 
 Notes: There are still a couple of errors such as weird context between the movie and the actor. Also, I did not use any libraries, since it results in a lot of bugs, so I just used the basic Java libraries. This can be the cause for weird context. I will try to implement libraries to fix the bugs in the future.
